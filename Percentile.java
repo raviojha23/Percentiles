@@ -24,7 +24,7 @@ public class Percentile{
 	
 	public static void main(String []args){
 		try{
-			if(args.length == 2){
+			if(args.length == 3){
 				Thread tFeeder = new Thread(new Feeder(messages,Long.parseLong(args[0]),Integer.parseInt(args[2])));
 				tFeeder.start();
 				Percentile objPercentile = new Percentile();
@@ -79,9 +79,9 @@ class Feeder extends Thread{
 		try{
 			boolean flag = true;
 			long start = System.currentTimeMillis();
-			long endTime = start + endTime*1000;
-			while(System.currentTimeMillis() < endTime){
-				while(flag){
+			long Time = start + endTime*60*1000;
+			while(System.currentTimeMillis() < Time){
+				//while(flag){
 					for(int i=0;i<50000;i++){
 						int randomInt = rnd.nextInt(5000);
 						double randomDouble = Math.random();
@@ -108,7 +108,7 @@ class Feeder extends Thread{
 					if(injectionRate == 300000)
 						Thread.sleep(100);
 					
-				}
+				//}
 			}
 		}
 		catch(Exception e){
