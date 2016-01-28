@@ -25,7 +25,7 @@ public class Percentile{
 	public static void main(String []args){
 		try{
 			if(args.length == 2){
-				Thread tFeeder = new Thread(new Feeder(messages,Long.parseLong(args[0])));
+				Thread tFeeder = new Thread(new Feeder(messages,Long.parseLong(args[0]),Integer.parseInt(args[2])));
 				tFeeder.start();
 				Percentile objPercentile = new Percentile();
 				
@@ -34,13 +34,13 @@ public class Percentile{
 				Thread tCalculate = new Thread(new Calculate());
 				tCalculate.start();
 				
-				tFeeder.join(240000);
+				tFeeder.join();
 				tReader.join();
 				tCalculate.join();
 			
 			}
 			else{
-				System.out.println("CORRECT USAGE: java -cp . Percentile <injectionRate> <batchSize>");
+				System.out.println("CORRECT USAGE: java -cp . Percentile <injectionRate> <batchSize> <runtime>");
 			}
 		}
 		catch(Exception e){
@@ -63,47 +63,52 @@ class Feeder extends Thread{
 	double value;
 	Random rnd = new Random();
 	long injectionRate;
+	int endTime;
 	
-	
-	public Feeder(Vector messages,long injectionRate){
+	public Feeder(Vector messages,long injectionRate, int endTime){
 		//message = new StringBuffer();
 		message = "";
 		serialNo = 1;
 		FS = "|";
 		this.messages = messages;
 		this.injectionRate = injectionRate;
+		this.endTime = endTime;
 	}
 
 	public void run(){
 		try{
 			boolean flag = true;
-			while(flag){
-				for(int i=0;i<50000;i++){
-					int randomInt = rnd.nextInt(5000);
-					double randomDouble = Math.random();
-					date = new Date();
-					Timestamp st = new java.sql.Timestamp(date.getTime());
-					value = randomDouble*randomInt;
-					//message.append(serialNo).append(FS).append(new java.sql.Timestamp(date.getTime())).append(FS).append(randomDouble*randomInt);
-					message = serialNo+FS+st+FS+value;
-					if(message!=null && message.length()>0){
-						messages.add(message);
-						serialNo++;
+			long start = System.currentTimeMillis();
+			long endTime = start + endTime*1000;
+			while(System.currentTimeMillis() < endTime){
+				while(flag){
+					for(int i=0;i<50000;i++){
+						int randomInt = rnd.nextInt(5000);
+						double randomDouble = Math.random();
+						date = new Date();
+						Timestamp st = new java.sql.Timestamp(date.getTime());
+						value = randomDouble*randomInt;
+						//message.append(serialNo).append(FS).append(new java.sql.Timestamp(date.getTime())).append(FS).append(randomDouble*randomInt);
+						message = serialNo+FS+st+FS+value;
+						if(message!=null && message.length()>0){
+							messages.add(message);
+							serialNo++;
+						}
+						//if(message.length()>0)
+							//message.delete(0,message.length());
+						//if(serialNo%10000==0)
+							//System.out.println(message+"Feeder");
 					}
-					//if(message.length()>0)
-						//message.delete(0,message.length());
-					//if(serialNo%10000==0)
-						//System.out.println(message+"Feeder");
+					System.out.println(serialNo);
+					Thread.sleep(900);
+					if(injectionRate == 100000)                          //Given that 100000 msgs take 230 ms
+						Thread.sleep(770);
+					if(injectionRate == 200000)
+						Thread.sleep(270);
+					if(injectionRate == 300000)
+						Thread.sleep(100);
+					
 				}
-				System.out.println(serialNo);
-				Thread.sleep(900);
-				if(injectionRate == 100000)                          //Given that 100000 msgs take 230 ms
-					Thread.sleep(770);
-				if(injectionRate == 200000)
-					Thread.sleep(270);
-				if(injectionRate == 300000)
-					Thread.sleep(100);
-				
 			}
 		}
 		catch(Exception e){
