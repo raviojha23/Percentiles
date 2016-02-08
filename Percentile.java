@@ -7,8 +7,8 @@ import java.util.List;
 import java.sql.*;
 
 public class Percentile{
-	//public static List messages = new ArrayList();
-	public static Vector messages = new Vector(3,2);
+	public static List messages = new ArrayList();
+	//public static Vector messages = new Vector(3,2);
 	public Connection getConnection(){
 		Connection conn = null;
 		try{
@@ -25,16 +25,19 @@ public class Percentile{
 	public static void main(String []args){
 		try{
 			if(args.length == 3){
-				Thread tFeeder = new Thread(new Feeder(messages,Long.parseLong(args[0]),Integer.parseInt(args[2])));
-				tFeeder.start();
+				//Thread tFeeder = new Thread(new Feeder(messages,Long.parseLong(args[0]),Integer.parseInt(args[2])));
+				//tFeeder.start();
 				Percentile objPercentile = new Percentile();
+				
+				Feeder objFeeder = new Feeder(messages,Long.parseLong(args[0]),Integer.parseInt(args[2]));
+				objFeeder.runner();
 				
 				Thread tReader = new Thread(new Reader(messages,Integer.parseInt(args[1])));
 				tReader.start();
 				Thread tCalculate = new Thread(new Calculate());
 				tCalculate.start();
 				
-				tFeeder.join();
+				//tFeeder.join();
 				tReader.join();
 				tCalculate.join();
 			
@@ -57,15 +60,15 @@ class Feeder extends Thread{
 	//StringBuffer message;
 	String message;
 	String FS;
-	//public List messages = new ArrayList();
-	public Vector messages = new Vector(3,2);
+	public List messages = new ArrayList();
+	//public Vector messages = new Vector(3,2);
 	Date date;
 	double value;
 	Random rnd = new Random();
 	long injectionRate;
 	int endTime;
 	
-	public Feeder(Vector messages,long injectionRate, int endTime){
+	public Feeder(List messages,long injectionRate, int endTime){
 		//message = new StringBuffer();
 		message = "";
 		serialNo = 1;
@@ -75,21 +78,26 @@ class Feeder extends Thread{
 		this.endTime = endTime;
 	}
 
-	public void run(){
+	public void runner(){
 		try{
 			boolean flag = true;
 			long start = System.currentTimeMillis();
 			long Time = start + endTime*60*1000;
+			//long delta=0;
+			
 			while(System.currentTimeMillis() < Time){
 				//while(flag){
 					for(int i=0;i<50000;i++){
-						int randomInt = rnd.nextInt(5000);
+						int randomInt = rnd.nextInt(1000000);
 						double randomDouble = Math.random();
 						date = new Date();
 						Timestamp st = new java.sql.Timestamp(date.getTime());
 						value = randomDouble*randomInt;
 						//message.append(serialNo).append(FS).append(new java.sql.Timestamp(date.getTime())).append(FS).append(randomDouble*randomInt);
-						message = serialNo+FS+st+FS+value;
+						//message = serialNo+FS+st+FS+value;
+						message = serialNo+FS+value;
+						//serialNo++;
+						//delta++;
 						if(message!=null && message.length()>0){
 							messages.add(message);
 							serialNo++;
@@ -100,8 +108,8 @@ class Feeder extends Thread{
 							//System.out.println(message+"Feeder");
 					}
 					System.out.println(serialNo);
-					Thread.sleep(900);
-					if(injectionRate == 100000)                          //Given that 100000 msgs take 230 ms
+					//Thread.sleep(900);
+					if(injectionRate == 100000)                          //Given that 100000 msgs take 200 ms
 						Thread.sleep(770);
 					if(injectionRate == 200000)
 						Thread.sleep(270);
@@ -110,6 +118,9 @@ class Feeder extends Thread{
 					
 				//}
 			}
+			long end = System.currentTimeMillis();
+			System.out.println("Runtime of Feeder thread for "+serialNo+" messages is "+(end-start));
+		
 		}
 		catch(Exception e){
 			System.out.println("Error from Feeder");
@@ -120,10 +131,10 @@ class Feeder extends Thread{
 
 class Reader extends Thread{
 
-	//private List messages = new ArrayList();
-	private Vector messages = new Vector(3,2);
+	private List messages = new ArrayList();
+	//private Vector messages = new Vector(3,2);
 	int batchSize;
-	public Reader(Vector message,int batchSize){
+	public Reader(List message,int batchSize){
 		this.messages = message;
 		this.batchSize = batchSize;
 	}
@@ -137,23 +148,27 @@ class Reader extends Thread{
 			
 			Percentile objPercentile = new Percentile();
 			Connection conn = objPercentile.getConnection();
-			
+						
 			String Query = "";
 			Statement statement = conn.createStatement();
-			Date date = new Date();
+			Date date ;
 			PreparedStatement pst = null;
-			pst = conn.prepareStatement("insert into utable (id, ts, value)  values (?,?,?)");
+			pst = conn.prepareStatement("insert into utable (id, value)  values (?,?)");
+			int j = 0;
 			while(flag){
 				int i = 0;
-				
+				//long DBstart = System.currentTimeMillis();
 				for(i =0 ;i<batchSize ;i++){
-					if(!messages.isEmpty()){
+					//long DBstart = System.currentTimeMillis();
+					if(!messages.isEmpty() && j<messages.size()){
 					//for( i = 0;i< messages.size();i++){
-						String msg = (String)messages.remove(0);
-						//String msg = messages.remove(0).toString();
+						//String msg = (String)messages.remove(0);
+						String msg = (String)messages.get(j);
+						//System.out.println(msg);
 						if(msg == null)
 							continue;
 						msgs = msg.split("\\|");
+						date = new Date();
 						//System.out.println(msgs[0]+" "+msgs[1]+" "+msgs[2]+" ");
 						try {
 						/*
@@ -162,8 +177,8 @@ class Reader extends Thread{
 							+ msgs[2] + ")";	
 						*/	
 							pst.setInt(1,Integer.parseInt(msgs[0]));
-							pst.setTimestamp(2, Timestamp.valueOf(msgs[1]));
-							pst.setDouble(3,Double.parseDouble(msgs[2]));
+							//pst.setTimestamp(2, new java.sql.Timestamp(date.getTime()));
+							pst.setDouble(2,Double.parseDouble(msgs[1]));
 							pst.addBatch();
 						} catch (Exception e) {
 							e.printStackTrace();
@@ -171,14 +186,20 @@ class Reader extends Thread{
 							continue;
 							
 						}				
+						j++;
 					//}
 					}
 					else{
 						Thread.sleep(100);	
-					}	
+					}
+					//long DBend = System.currentTimeMillis();
+					//System.out.println("Time for DB stat "+(DBend-DBstart));
 				}
+				
 				pst.executeBatch();
 				conn.commit();
+				//long DBend = System.currentTimeMillis();
+				//System.out.println("Time for DB stat "+(DBend-DBstart));
 			}
 			
 				conn.close();
@@ -212,13 +233,16 @@ class Calculate extends Thread{
 			PreparedStatement preStatement = conn.prepareStatement(sql);
 			ResultSet result;
 			boolean flag = true;
+			int serialNo = 0 ;
 			while(flag){
 				
-				Thread.sleep(5);
+				//Thread.sleep(5);
+				long PercentileStart = System.currentTimeMillis();
 				result = preStatement.executeQuery();
+				
 				//System.out.println("Here"+result.next());
 				while(result.next()){
-					int serialNo = result.getInt(1);
+					serialNo = result.getInt(1);
 					double percentile = result.getDouble(2);
 					System.out.println("Index @ " + serialNo+" Percentile is "+percentile);
 					if(!uniqueRows.contains(serialNo)){
@@ -226,6 +250,9 @@ class Calculate extends Thread{
 						uniqueRows.add(serialNo);
 					}	
 				}
+				long PercentileEnd = System.currentTimeMillis();
+				System.out.println("Time for DB stat of  "+serialNo+" rows is "+(PercentileStart-PercentileEnd));
+			
 			}
 			
 			conn.close();
